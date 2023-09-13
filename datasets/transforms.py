@@ -19,9 +19,9 @@ class toOneHot(object):
 
 class Crop(object):
     def __init__(self, low_crop, high_crop):
-        '''
+        """
         Crop all dimensions
-        '''
+        """
         self.low = low_crop
         self.high = high_crop
 
@@ -33,7 +33,7 @@ class Crop(object):
         return tmad
 
     def __repr__(self):
-        return self.__class__.__name__ + '()'
+        return self.__class__.__name__ + "()"
 
 
 class CropDims(object):
@@ -53,30 +53,39 @@ class CropDims(object):
         return tmad
 
     def __repr__(self):
-        return self.__class__.__name__ + '()'
+        return self.__class__.__name__ + "()"
 
 
 class Attention(object):
     def __init__(self, n_attention_events, size):
-        '''
+        """
         Crop around the median event in the last n_events.
-        '''
+        """
         self.att_shape = np.array(size[1:], dtype=np.int64)
         self.n_att_events = n_attention_events
 
     def __call__(self, tmad):
-        df = pd.DataFrame(tmad, columns=['t', 'p', 'x', 'y'])
+        df = pd.DataFrame(tmad, columns=["t", "p", "x", "y"])
         # compute centroid in x and y
-        centroids = df.loc[:, ['x', 'y']].rolling(window=self.n_att_events,
-                                                  min_periods=1).median().astype(int)
+        centroids = (
+            df.loc[:, ["x", "y"]]
+            .rolling(window=self.n_att_events, min_periods=1)
+            .median()
+            .astype(int)
+        )
         # re-address (translate) events with respect to centroid corner
-        df.loc[:, ['x', 'y']] -= centroids - self.att_shape // 2
+        df.loc[:, ["x", "y"]] -= centroids - self.att_shape // 2
         # remove out of range events
-        df = df.loc[(df.x >= 0) & (df.x < self.att_shape[1]) & (df.y >= 0) & (df.y < self.att_shape[0])]
+        df = df.loc[
+            (df.x >= 0)
+            & (df.x < self.att_shape[1])
+            & (df.y >= 0)
+            & (df.y < self.att_shape[0])
+        ]
         return df.to_numpy()
 
     def __repr__(self):
-        return self.__class__.__name__ + '()'
+        return self.__class__.__name__ + "()"
 
 
 class ToChannelHeightWidth(object):
@@ -90,10 +99,12 @@ class ToChannelHeightWidth(object):
             return tmad
 
         else:
-            raise TypeError('Wrong number of dimensions. Found {0}, expected 1 or 3'.format(n - 1))
+            raise TypeError(
+                "Wrong number of dimensions. Found {0}, expected 1 or 3".format(n - 1)
+            )
 
     def __repr__(self):
-        return self.__class__.__name__ + '()'
+        return self.__class__.__name__ + "()"
 
 
 class ToCountFrame(object):
@@ -111,7 +122,7 @@ class ToCountFrame(object):
         addrs = tmad[:, 1:]
 
         ts = range(0, self.T)
-        chunks = np.zeros([len(ts)] + self.size, dtype='int8')
+        chunks = np.zeros([len(ts)] + self.size, dtype="int8")
         idx_start = 0
         idx_end = 0
         for i, t in enumerate(ts):
@@ -124,13 +135,13 @@ class ToCountFrame(object):
         return chunks
 
     def __repr__(self):
-        return self.__class__.__name__ + '()'
+        return self.__class__.__name__ + "()"
 
 
 class Repeat(object):
-    '''
+    """
     Replicate np.array (C) as (n_repeat X C). This is useful to transform sample labels into sequences
-    '''
+    """
 
     def __init__(self, n_repeat):
         self.n_repeat = n_repeat
@@ -139,7 +150,7 @@ class Repeat(object):
         return np.tile(np.expand_dims(target, 0), [self.n_repeat, 1])
 
     def __repr__(self):
-        return self.__class__.__name__ + '()'
+        return self.__class__.__name__ + "()"
 
 
 class ToTensor(object):
@@ -159,4 +170,4 @@ class ToTensor(object):
         return torch.FloatTensor(frame)
 
     def __repr__(self):
-        return self.__class__.__name__ + '()'
+        return self.__class__.__name__ + "()"

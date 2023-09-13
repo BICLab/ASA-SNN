@@ -19,20 +19,15 @@ def test(args):
                 input.size()[2],
                 input.size()[3],
                 input.size()[4],
-                input.size()[5]
+                input.size()[5],
             )
             input = input.float().to(args.device)
             if len(labels.shape) == 3:
-                labels = labels.reshape(
-                    b * args.clip,
-                    labels.size()[2]
-                )
+                labels = labels.reshape(b * args.clip, labels.size()[2])
                 labels = labels.float().to(args.device)
             else:
                 labels = labels.reshape(
-                    b * args.clip,
-                    labels.size()[2],
-                    labels.size()[3]
+                    b * args.clip, labels.size()[2], labels.size()[3]
                 )
                 labels = labels[:, 1, :].float().to(args.device)
         else:
@@ -50,8 +45,8 @@ def test(args):
         _, labelTest = torch.max(labels.data, 1)
 
         for i in range(b):
-            predicted_clips = predicted[i * args.clip:(i + 1) * args.clip]
-            labelTest_clips = labelTest[i * args.clip:(i + 1) * args.clip]
+            predicted_clips = predicted[i * args.clip : (i + 1) * args.clip]
+            labelTest_clips = labelTest[i * args.clip : (i + 1) * args.clip]
             test_clip_correct = (predicted_clips == labelTest_clips).sum().item()
             if test_clip_correct / args.clip > 0.5:
                 args.test_correct += 1
@@ -61,8 +56,9 @@ def test(args):
         functional.reset_net(args.model)
 
         bar_test.update()
-        bar_test.set_description("Test:Epoch[%d/%d]" % (args.epoch + 1, args.num_epochs))
+        bar_test.set_description(
+            "Test:Epoch[%d/%d]" % (args.epoch + 1, args.num_epochs)
+        )
         bar_test.set_postfix(Loss=loss.item())
 
     bar_test.close()
-

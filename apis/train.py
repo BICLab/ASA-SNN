@@ -25,7 +25,7 @@ def train(args):
         outputs, lasso = args.model(input)
 
         if args.fbs or args.gate:
-            loss = args.criterion(outputs, labels)+args.lasso_lambda * lasso
+            loss = args.criterion(outputs, labels) + args.lasso_lambda * lasso
         else:
             loss = args.criterion(outputs, labels)
 
@@ -40,7 +40,9 @@ def train(args):
         args.optimizer.step()
 
         bar_train.update()
-        bar_train.set_description("Train:Epoch[%d/%d]" % (args.epoch + 1, args.num_epochs))
+        bar_train.set_description(
+            "Train:Epoch[%d/%d]" % (args.epoch + 1, args.num_epochs)
+        )
         bar_train.set_postfix(Loss=loss.item())
 
         functional.reset_net(args.model)

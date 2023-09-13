@@ -6,27 +6,36 @@ from models.module.LIF import ConvAttLIF, AttLIF
 
 class DVSGestureNet(nn.Module):
     def __init__(
-        self, 
+        self,
         args,
-        conv_configs = [
-            (2, 32, 3,),
-            (32, 32, 3,),
-            (32, 32, 3,),
+        conv_configs=[
+            (
+                2,
+                32,
+                3,
+            ),
+            (
+                32,
+                32,
+                3,
+            ),
+            (
+                32,
+                32,
+                3,
+            ),
         ],
-        pool_kernels_size = [1, 2, 2],
-        attn_flags = [1, 1, 1],
+        pool_kernels_size=[1, 2, 2],
+        attn_flags=[1, 1, 1],
     ):
         super().__init__()
 
-        TAda_configs = [False]
-        for _ in range(len(conv_configs)-1):
-            TAda_configs.append(args.TAda)
         dropout_ps = []
         for i in range(len(args.ps)):
             if args.ps[i] == "1":
                 dropout_ps.append(0.5)
             elif args.ps[i] == "0":
-                dropout_ps.append(0.)
+                dropout_ps.append(0.0)
 
         class ActFun(torch.autograd.Function):
             def __init__(self):
@@ -35,26 +44,22 @@ class DVSGestureNet(nn.Module):
             @staticmethod
             def forward(ctx, input):
                 ctx.save_for_backward(input)
-                return input.ge(0.).float()
+                return input.ge(0.0).float()
 
             @staticmethod
             def backward(ctx, grad_output):
-                input, = ctx.saved_tensors
+                (input,) = ctx.saved_tensors
                 temp = abs(input) < args.lens
                 return grad_output * temp.float() / (2 * args.lens)
 
         ConvAttLIFs = []
-        for i, (
-            conv_config, 
-            pooling_kernel_size, 
-            TAda,
-            attn_flag
-        ) in enumerate(zip(
-            conv_configs, 
-            pool_kernels_size, 
-            TAda_configs,
-            attn_flags,
-        )):
+        for i, (conv_config, pooling_kernel_size, attn_flag) in enumerate(
+            zip(
+                conv_configs,
+                pool_kernels_size,
+                attn_flags,
+            )
+        ):
             if attn_flag == 0:
                 attn = "no"
             elif attn_flag == 1:
@@ -71,13 +76,17 @@ class DVSGestureNet(nn.Module):
                     useBatchNorm=True,
                     pooling_kernel_size=pooling_kernel_size,
                     T=args.T,
-                    pa_dict={'alpha': args.alpha, 'beta': args.beta, 'Vreset': args.Vreset, 'Vthres': args.Vthres},
-                    reduction= args.reduction,
-                    track_running_stats = args.track_running_stats,
+                    pa_dict={
+                        "alpha": args.alpha,
+                        "beta": args.beta,
+                        "Vreset": args.Vreset,
+                        "Vthres": args.Vthres,
+                    },
+                    reduction=args.reduction,
+                    track_running_stats=args.track_running_stats,
                     mode_select=args.mode_select,
                     mem_act=args.mem_act,
                     TR_model=args.TR_model,
-                    TAda=TAda,
                     attention_before_conv=args.attention_before_conv,
                     attention_per_time=args.attention_per_time,
                     attention_in_spike=args.attention_in_spike,
@@ -90,17 +99,22 @@ class DVSGestureNet(nn.Module):
         # Building Head
         FCs = []
         cfg_fc = [conv_configs[-1][1] * 8 * 8, 256, args.num_classes]
-        for i in range(len(cfg_fc)-1):
+        for i in range(len(cfg_fc) - 1):
             FCs.append(
                 AttLIF(
-                    p=dropout_ps[i+3],
-                    attention='no',
+                    p=dropout_ps[i + 3],
+                    attention="no",
                     inputSize=cfg_fc[i],
-                    hiddenSize=cfg_fc[i+1],
+                    hiddenSize=cfg_fc[i + 1],
                     spikeActFun=ActFun.apply,
                     useBatchNorm=False,
                     T=args.T,
-                    pa_dict={'alpha': args.alpha, 'beta': args.beta, 'Vreset': args.Vreset, 'Vthres': args.Vthres},
+                    pa_dict={
+                        "alpha": args.alpha,
+                        "beta": args.beta,
+                        "Vreset": args.Vreset,
+                        "Vthres": args.Vthres,
+                    },
                     reduction=args.reduction,
                     track_running_stats=args.track_running_stats,
                     mode_select=args.mode_select,
@@ -143,4 +157,3 @@ class DVSGestureNet(nn.Module):
             return outputs, firing_nums, mps
         else:
             return outputs, firing_nums
-

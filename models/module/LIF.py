@@ -4,7 +4,6 @@ import torch.nn as nn
 from spikingjelly.clock_driven import layer
 
 from models import ATTN_LAYER
-from models.module.TAda import conv_TAda
 from utils import paramInit
 
 
@@ -243,7 +242,6 @@ class ConvAttLIF(nn.Module):
         pooling_kernel_size=1,
         p=0,
         track_running_stats=False,
-        TAda=False,
         mode_select='spike',
         mem_act=torch.relu,
         TR_model='NTR',
@@ -254,26 +252,17 @@ class ConvAttLIF(nn.Module):
         super().__init__()
 
         self.onlyLast = onlyLast
-        self.TAda = TAda
         self.attention_flag = attention
         self.attention_before_conv = attention_before_conv
         self.attention_per_time = attention_per_time
 
-        if not TAda:
-            self.conv = layer.SeqToANNContainer(nn.Conv2d(
-                in_channels=inputSize,
-                out_channels=hiddenSize,
-                kernel_size=kernel_size,
-                padding=padding,
-                stride=stride,
-            ))
-        else:
-            self.conv = conv_TAda(
-                in_planes=inputSize,
-                out_planes=hiddenSize,
-                kernel_size=kernel_size,
-                stride=stride,
-            )
+        self.conv = layer.SeqToANNContainer(nn.Conv2d(
+            in_channels=inputSize,
+            out_channels=hiddenSize,
+            kernel_size=kernel_size,
+            padding=padding,
+            stride=stride,
+        ))
 
         if init_method is not None:
             paramInit(model=self.conv, method=init_method)
@@ -292,7 +281,7 @@ class ConvAttLIF(nn.Module):
             )
 
         if attention_before_conv:
-            assert attention != "HCSA"
+            # assert attention != "HCSA"
             attn_channels = inputSize
         else:
             attn_channels = hiddenSize
@@ -350,17 +339,9 @@ class ConvAttLIF(nn.Module):
         if self.attention_before_conv:
             data = self._forward_impl_attn(data)
 
-        if not self.TAda:
-            output = self.conv(data)
-            if self.useBatchNorm:
-                output = self.bn(output)
-        else:
-            data = data.permute(1, 2, 0, 3, 4).contiguous()
-            output = self.conv(data, data)
-            output = output.permute(0, 2, 1, 3, 4).contiguous()
-            if self.useBatchNorm:
-                output = self.bn(output)
-            output = output.permute(1, 0, 2, 3, 4).contiguous()
+        output = self.conv(data)
+        if self.useBatchNorm:
+            output = self.bn(output)
 
         if self.pooling_kernel_size > 1:
             output = self.pooling(output)
@@ -373,179 +354,7 @@ class ConvAttLIF(nn.Module):
             mp = self._forward_impl_attn(mp)
         output = self.spike(mp)
 
-        # print(np.sum(mp.cpu().detach().numpy()>0.3))
-        # print(np.sum(output.cpu().detach().numpy()>0.3))
-        # print()
-
         if mp_collect:
             return output, mp
         else:
             return output
-
-
-# class FBSConvLIF(nn.Module):
-#     def __init__(
-#         self,
-#         inputSize,
-#         hiddenSize,
-#         kernel_size,
-#         spikeActFun,
-#         attention='no',
-#         bias=True,
-#         onlyLast=False,
-#         padding=1,
-#         useBatchNorm=False,
-#         init_method=None,
-#         scale=0.02,
-#         pa_dict=None,
-#         pa_train_self=False,
-#         reduction=16,
-#         T=60,
-#         stride=1,
-#         pooling_kernel_size=1,
-#         p=0,
-#         track_running_stats=False,
-#         mode_select='spike',
-#         mem_act=torch.relu,
-#         TR_model='NTR',
-#         fbs=False,
-#         c_sparsity_ratio=1.0,
-#         t_sparsity_ratio=1.0,
-#     ):
-#         super().__init__()
-#         self.onlyLast = onlyLast
-#         self.attention_flag = attention
-#         self.fbs = fbs
-#         self.c_sparsity_ratio = c_sparsity_ratio
-#         self.t_sparsity_ratio = t_sparsity_ratio
-#         self.conv = layer.SeqToANNContainer(nn.Conv2d(
-#             in_channels=inputSize,
-#             out_channels=hiddenSize,
-#             kernel_size=kernel_size,
-#             bias=True,
-#             padding=padding,
-#             stride=stride,
-#         ))
-
-#         if init_method is not None:
-#             paramInit(model=self.conv, method=init_method)
-
-#         self.useBatchNorm = useBatchNorm
-
-#         if self.useBatchNorm:
-#             self.bn = layer.SeqToANNContainer(nn.BatchNorm2d(
-#                 hiddenSize, track_running_stats=track_running_stats
-#             ))
-
-#         self.pooling_kernel_size = pooling_kernel_size
-#         if self.pooling_kernel_size > 1:
-#             self.pooling = layer.SeqToANNContainer(
-#                 nn.AvgPool2d(kernel_size=pooling_kernel_size)
-#             )
-        
-#         assert reduction <= hiddenSize, \
-#             "the attn_channel should be bigger than the reduction"
-#         self.attn = ATTN_LAYER[attention](T, hiddenSize, reduction=reduction)
-
-#         self.network = nn.Sequential()
-#         self.network.add_module(
-#             'ConvIF',
-#             layer.MultiStepContainer(IFCell(
-#                 inputSize=inputSize,
-#                 hiddenSize=hiddenSize,
-#                 kernel_size=kernel_size,
-#                 bias=bias,
-#                 spikeActFun=spikeActFun,
-#                 padding=padding,
-#                 scale=scale,
-#                 pa_dict=pa_dict,
-#                 pa_train_self=pa_train_self,
-#                 p=p,
-#                 mode_select=mode_select,
-#                 mem_act=mem_act,
-#                 TR_model=TR_model,
-#                 has_conv=True
-#             ))
-#         )
-
-#         if fbs:
-#             self.avg_c = nn.AdaptiveAvgPool2d(1)
-#             self.avg_t = nn.AdaptiveAvgPool3d(1)
-
-#     def forward(self, data):
-#         output = self.conv(data)
-
-#         if self.useBatchNorm:
-#             output = self.bn(output)
-
-#         if self.pooling_kernel_size > 1:
-#             output = self.pooling(output)
-
-#         if self.attention_flag == 'no':
-#             data = output
-#         else:
-#             if self.fbs:
-#                 if self.attention_flag == 'TA':
-#                     data = output.permute(1, 0, 2, 3, 4)
-#                     ta = self.attn(data)
-#                     pred_saliency_t = self.avg_t(ta).squeeze()
-#                     pred_saliency_wta, winner_mask_t = winner_take_all(
-#                         pred_saliency_t, sparsity_ratio=self.t_sparsity_ratio)
-#                     pred_saliency_wta = pred_saliency_wta.unsqueeze(
-#                         -1).unsqueeze(-1).unsqueeze(-1)
-#                     winner_mask = winner_mask_t.unsqueeze(
-#                         -1).unsqueeze(-1).unsqueeze(-1)
-#                     if not self.training:
-#                         data = data * winner_mask
-#                     if self.reserve_coefficient:
-#                         data = data * pred_saliency_wta
-
-#                 elif self.attention_flag == 'CA':
-#                     data = output.permute(1, 0, 2, 3, 4)
-#                     ca = self.attn(data)
-
-#                     pred_saliency_c = self.avg_c(ca).squeeze()
-#                     pred_saliency_wta, winner_mask_c = winner_take_all(
-#                         pred_saliency_c, sparsity_ratio=self.c_sparsity_ratio)
-#                     pred_saliency_wta = pred_saliency_wta.unsqueeze(
-#                         1).unsqueeze(-1).unsqueeze(-1)
-#                     winner_mask = winner_mask_c.unsqueeze(
-#                         1).unsqueeze(-1).unsqueeze(-1)
-#                     if not self.training:
-#                         data = data * winner_mask
-#                     if self.reserve_coefficient:
-#                         data = data * pred_saliency_wta
-
-#                 elif self.attention_flag == 'TCA':
-#                     data = output.permute(1, 0, 2, 3, 4)
-#                     ta, ca = self.attn(data)
-
-#                     pred_saliency_c = self.avg_c(ca).squeeze()
-#                     pred_saliency_t = self.avg_t(ta).squeeze()
-#                     pred_saliency_c_wta, winner_mask_c = winner_take_all(
-#                         pred_saliency_c, sparsity_ratio=self.c_sparsity_ratio)
-#                     pred_saliency_t_wta, winner_mask_t = winner_take_all(
-#                         pred_saliency_t, sparsity_ratio=self.t_sparsity_ratio)
-#                     pred_saliency_wta = pred_saliency_c_wta.unsqueeze(
-#                         1).unsqueeze(-1).unsqueeze(-1) * pred_saliency_t_wta.unsqueeze(-1).unsqueeze(-1).unsqueeze(-1)
-#                     winner_mask = winner_mask_c.unsqueeze(
-#                         1).unsqueeze(-1).unsqueeze(-1) * winner_mask_t.unsqueeze(-1).unsqueeze(-1).unsqueeze(-1)
-#                     if not self.training:
-#                         data = data * winner_mask
-#                     if self.reserve_coefficient:
-#                         data = data * pred_saliency_wta
-
-#             else:
-#                 data = self.attn(output.permute(1, 0, 2, 3, 4))
-#                 pred_saliency_wta = torch.tensor(0).cuda()
-
-#         data = data.permute(1, 0, 2, 3, 4)
-
-#         for layer in self.network:
-#             out = layer(data)
-
-#         if self.onlyLast:
-#             return output, pred_saliency_wta
-#         else:
-#             return out, pred_saliency_wta
-

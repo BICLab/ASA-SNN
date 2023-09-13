@@ -24,7 +24,7 @@ def create_net(args):
         lr=args.lr,
         betas=args.betas,
         eps=args.eps,
-        weight_decay=args.weight_decay
+        weight_decay=args.weight_decay,
     )
 
     # args.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
@@ -35,9 +35,9 @@ def create_net(args):
     #     verbose=True
     # )
     args.scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
-        optimizer=args.optimizer, 
+        optimizer=args.optimizer,
         T_0=args.num_epochs,
-        T_mult=1, 
-        eta_min=1e-6, 
-        verbose=True
+        T_mult=1,
+        eta_min=1e-6,
+        verbose=True,
     )

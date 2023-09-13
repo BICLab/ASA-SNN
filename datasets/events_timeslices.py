@@ -10,7 +10,7 @@ def expand_targets(targets, T=500, burnin=0):
 
 def one_hot(mbt, num_classes):
     out = np.zeros([mbt.shape[0], num_classes])
-    out[np.arange(mbt.shape[0], dtype='int'), mbt.astype('int')] = 1
+    out[np.arange(mbt.shape[0], dtype="int"), mbt.astype("int")] = 1
     return out
 
 
@@ -19,8 +19,8 @@ def find_first(a, tgt):
 
 
 def cast_evs(evs):
-    ts = (evs[:, 0] * 1e6).astype('uint64')
-    ad = (evs[:, 1:]).astype('uint64')
+    ts = (evs[:, 0] * 1e6).astype("uint64")
+    ad = (evs[:, 1:]).astype("uint64")
     return ts, ad
 
 
@@ -57,8 +57,15 @@ def get_event_slice(times, addrs, start_time, T, size=[128, 128], ds=1, dt=1000)
     try:
         idx_beg = find_first(times, start_time)
         idx_end = find_first(times[idx_beg:], start_time + T * dt) + idx_beg
-        return chunk_evs_pol_dvs(times[idx_beg:idx_end], addrs[idx_beg:idx_end], deltat=dt, chunk_size=T, size=size,
-                                 ds_w=ds, ds_h=ds)
+        return chunk_evs_pol_dvs(
+            times[idx_beg:idx_end],
+            addrs[idx_beg:idx_end],
+            deltat=dt,
+            chunk_size=T,
+            size=size,
+            ds_w=ds,
+            ds_h=ds,
+        )
     except IndexError:
         raise IndexError("Empty batch found")
 
@@ -73,7 +80,7 @@ def get_tmad_slice(times, addrs, start_time, T):
 
 
 def get_time_surface(evs, invtau=1e-6, size=(346, 260, 2)):
-    tr = np.zeros(size, 'int64') - np.inf
+    tr = np.zeros(size, "int64") - np.inf
 
     for ev in evs:
         tr[ev[2], ev[1], ev[3]] = ev[0]
@@ -86,13 +93,15 @@ def get_time_surface(evs, invtau=1e-6, size=(346, 260, 2)):
 def chunk_evs_dvs(evs, deltat=1000, chunk_size=500, size=[304, 240], ds_w=1, ds_h=1):
     t_start = evs[0, 0]
     ts = range(t_start + chunk_size, t_start + chunk_size * deltat, deltat)
-    chunks = np.zeros([len(ts)] + size, dtype='int8')
+    chunks = np.zeros([len(ts)] + size, dtype="int8")
     idx_start = 0
     idx_end = 0
     for i, t in enumerate(ts):
         idx_end += find_first(evs[idx_end:, 0], t)
         if idx_end > idx_start:
-            get_binary_frame_np(chunks[i, ...], evs[idx_start:idx_end], ds_h=ds_h, ds_w=ds_w)
+            get_binary_frame_np(
+                chunks[i, ...], evs[idx_start:idx_end], ds_h=ds_h, ds_w=ds_w
+            )
         idx_start = idx_end
     return chunks
 
@@ -100,7 +109,7 @@ def chunk_evs_dvs(evs, deltat=1000, chunk_size=500, size=[304, 240], ds_w=1, ds_
 def frame_evs(times, addrs, deltat=1000, duration=500, size=[240], downsample=[1]):
     t_start = times[0]
     ts = range(t_start, t_start + duration * deltat, deltat)
-    chunks = np.zeros([len(ts)] + size, dtype='int8')
+    chunks = np.zeros([len(ts)] + size, dtype="int8")
     idx_start = 0
     idx_end = 0
     for i, t in enumerate(ts):
@@ -113,17 +122,23 @@ def frame_evs(times, addrs, deltat=1000, duration=500, size=[240], downsample=[1
     return chunks
 
 
-def chunk_evs_pol_dvs(times, addrs, deltat=1000, chunk_size=500, size=[2, 304, 240], ds_w=1, ds_h=1):
+def chunk_evs_pol_dvs(
+    times, addrs, deltat=1000, chunk_size=500, size=[2, 304, 240], ds_w=1, ds_h=1
+):
     t_start = times[0]
     ts = range(t_start, t_start + chunk_size * deltat, deltat)
-    chunks = np.zeros([len(ts)] + size, dtype='int8')
+    chunks = np.zeros([len(ts)] + size, dtype="int8")
     idx_start = 0
     idx_end = 0
     for i, t in enumerate(ts):
         idx_end += find_first(times[idx_end:], t)
         if idx_end > idx_start:
             ee = addrs[idx_start:idx_end]
-            pol, x, y = ee[:, 2], (ee[:, 0] // ds_w).astype(np.int), (ee[:, 1] // ds_h).astype(np.int)
+            pol, x, y = (
+                ee[:, 2],
+                (ee[:, 0] // ds_w).astype(np.int),
+                (ee[:, 1] // ds_h).astype(np.int),
+            )
             np.add.at(chunks, (i, pol, x, y), 1)
         idx_start = idx_end
     return chunks
@@ -135,14 +150,18 @@ def chunk_evs_pol_dvs_gesture(data, dt=1000, T=500, size=[2, 304, 240], ds=[4, 4
     except Exception as e:
         t_start = 0
     ts = range(t_start, t_start + T * dt, dt)
-    chunks = np.zeros([len(ts)] + size, dtype='int64')
+    chunks = np.zeros([len(ts)] + size, dtype="int64")
     idx_start = 0
     idx_end = 0
     for i, t in enumerate(ts):
         idx_end += find_first(data[idx_end:, 0], t + dt)
         if idx_end > idx_start:
             ee = data[idx_start:idx_end, 1:]
-            pol, x, y = ee[:, 0], np.floor(ee[:, 1] / ds[0]).astype(np.int64), np.floor(ee[:, 2] / ds[1]).astype(np.int64)
+            pol, x, y = (
+                ee[:, 0],
+                np.floor(ee[:, 1] / ds[0]).astype(np.int64),
+                np.floor(ee[:, 2] / ds[1]).astype(np.int64),
+            )
             np.add.at(chunks, (i, pol, x, y), 1)
         idx_start = idx_end
     return chunks
@@ -150,17 +169,25 @@ def chunk_evs_pol_dvs_gesture(data, dt=1000, T=500, size=[2, 304, 240], ds=[4, 4
 
 def chunk_evs_pol_dvs_gait(data, dt=1000, T=500, size=[2, 304, 240], ds=[4, 4]):
     if len(data) == 0:
-        return np.zeros([T] + [2] + [int(128 / ds[0])] + [int(128 / ds[1])], dtype='int64')
+        return np.zeros(
+            [T] + [2] + [int(128 / ds[0])] + [int(128 / ds[1])], dtype="int64"
+        )
     t_start = data[0][0]
     ts = range(t_start, t_start + T * dt, dt)
-    chunks = np.zeros([len(ts)] + [2] + [int(128 / ds[0])] + [int(128 / ds[1])], dtype='int64')
+    chunks = np.zeros(
+        [len(ts)] + [2] + [int(128 / ds[0])] + [int(128 / ds[1])], dtype="int64"
+    )
     idx_start = 0
     idx_end = 0
     for i, t in enumerate(ts):
         idx_end += find_first(data[idx_end:, 0], t + dt)
         if idx_end > idx_start:
             ee = data[idx_start:idx_end, 1:]
-            pol, x, y = ee[:, 2], np.floor(ee[:, 0] / ds[0]).astype(np.int64), np.floor(ee[:, 1] / ds[1]).astype(np.int64)
+            pol, x, y = (
+                ee[:, 2],
+                np.floor(ee[:, 0] / ds[0]).astype(np.int64),
+                np.floor(ee[:, 1] / ds[1]).astype(np.int64),
+            )
             np.add.at(chunks, (i, pol, x, y), 1)
         idx_start = idx_end
     return chunks

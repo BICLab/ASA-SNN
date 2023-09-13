@@ -21,9 +21,26 @@ def main():
     args.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     args.device_ids = range(torch.cuda.device_count())
     args.modelPath = args.modelPath + args.attention
-    args.name = args.dataset + '_dt=' + str(args.dt) + 'ms' + '_T=' + str(args.T) + '_attn=' + args.attention + '_reduc=' + str(args.reduction)  + '_lam=' + str(args.lam) + '_seed=' + str(args.seed) + '_arch=' + str(args.arch)
-    args.modelNames = args.name + '.pth'
-    args.recordNames = args.name + '.csv'
+    args.name = (
+        args.dataset
+        + "_dt="
+        + str(args.dt)
+        + "ms"
+        + "_T="
+        + str(args.T)
+        + "_attn="
+        + args.attention
+        + "_reduc="
+        + str(args.reduction)
+        + "_lam="
+        + str(args.lam)
+        + "_seed="
+        + str(args.seed)
+        + "_arch="
+        + str(args.arch)
+    )
+    args.modelNames = args.name + ".pth"
+    args.recordNames = args.name + ".csv"
 
     print(args.name)
 
@@ -31,14 +48,18 @@ def main():
 
     create_net(args=args)
 
-    summary(args.model, (2, args.T, args.in_channels, args.im_height, args.im_width), depth=3)
+    summary(
+        args.model,
+        (2, args.T, args.in_channels, args.im_height, args.im_width),
+        depth=3,
+    )
 
     run(args=args)
 
-    print('best acc:', args.best_acc, 'best_epoch:', args.best_epoch)
+    print("best acc:", args.best_acc, "best_epoch:", args.best_epoch)
 
     save_csv(args=args)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

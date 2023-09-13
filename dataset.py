@@ -6,8 +6,16 @@ def create_dataset(args):
         from datasets.gesture.dataloaders import create_datasets
     elif args.dataset == "gesture_sj":
         from spikingjelly.datasets.dvs128_gesture import DVS128Gesture
+
         def create_datasets(root, train, **kwargs):
-            return DVS128Gesture(root, train=train, data_type="frame", frames_number=args.T, split_by="number")
+            return DVS128Gesture(
+                root,
+                train=train,
+                data_type="frame",
+                frames_number=args.T,
+                split_by="number",
+            )
+
     elif args.dataset == "gait_night" or args.dataset == "gait_day":
         from datasets.gait.dataloaders import create_datasets
     elif args.dataset == "recogition":
@@ -51,6 +59,5 @@ def create_dataset(args):
         shuffle=False,
         drop_last=args.drop_last,
         num_workers=args.num_work,
-        pin_memory=args.pip_memory
+        pin_memory=args.pip_memory,
     )
-

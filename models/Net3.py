@@ -3,9 +3,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from models import POOL_LAYER, ATTN_LAYER
-from models.module.TAda import conv_TAda
 from spikingjelly.clock_driven.neuron import *
 from spikingjelly.clock_driven import layer, functional, surrogate
+
 # Incorporating Learnable Membrane Time Constant to Enhance Learning of Spiking Neural Networks https://arxiv.org/abs/2007.05785
 
 
@@ -30,52 +30,39 @@ class ConvAttLIF(nn.Module):
         T,
         pool_mode="no",
         track_running_stats=True,
-        TAda=False,
-        attention_before_spike=True
+        attention_before_spike=True,
     ):
         super().__init__()
 
         self.attention_before_spike = attention_before_spike
-        self.TAda = TAda
 
         self.pool = layer.SeqToANNContainer(POOL_LAYER[pool_mode])
 
-        if not TAda:
-            self.conv = layer.SeqToANNContainer(nn.Conv2d(
+        self.conv = layer.SeqToANNContainer(
+            nn.Conv2d(
                 in_channels=inputSize,
                 out_channels=hiddenSize,
                 kernel_size=kernel_size,
                 padding=1,
                 stride=stride,
                 bias=False,
-            ))
-        else:
-            self.conv = conv_TAda(
-                in_planes=inputSize,
-                out_planes=hiddenSize,
-                kernel_size=kernel_size,
-                stride=stride,
             )
+        )
 
-        self.bn = layer.SeqToANNContainer(nn.BatchNorm2d(
-            hiddenSize, track_running_stats=track_running_stats
-        ))
+        self.bn = layer.SeqToANNContainer(
+            nn.BatchNorm2d(hiddenSize, track_running_stats=track_running_stats)
+        )
 
-        self.spike = layer.MultiStepContainer(LIFNode(
-            surrogate_function=surrogate.ATan()
-        ))
+        self.spike = layer.MultiStepContainer(
+            LIFNode(surrogate_function=surrogate.ATan())
+        )
 
         self.attn = ATTN_LAYER[attention](T, hiddenSize)
 
     def forward(self, x):
         x = self.pool(x)
 
-        if not self.TAda:
-            x = self.conv(x)
-        else:
-            x = x.permute(1, 2, 0, 3, 4).contiguous()
-            x = self.conv(x, x)
-            x = x.permute(2, 0, 1, 3, 4).contiguous()
+        x = self.conv(x)
 
         x = self.bn(x)
 
@@ -103,9 +90,9 @@ class AttLIF(nn.Module):
         super().__init__()
 
         self.fc = nn.Linear(in_channels, out_channels)
-        self.spike = layer.MultiStepContainer(LIFNode(
-            surrogate_function=surrogate.ATan()
-        ))
+        self.spike = layer.MultiStepContainer(
+            LIFNode(surrogate_function=surrogate.ATan())
+        )
 
     def forward(self, x):
         x = functional.seq_to_ann_forward(x, self.fc)
@@ -115,28 +102,26 @@ class AttLIF(nn.Module):
 
 class DVSGestureNet(nn.Module):
     def __init__(
-        self, 
-        args, 
-        channels=128, 
-        conv_configs = [
+        self,
+        args,
+        channels=128,
+        conv_configs=[
             (2, 64, 3, 1),
             (64, 128, 3, 1),
             (128, 128, 3, 1),
             (128, 128, 3, 1),
             (128, 128, 3, 1),
         ],
-        pool_modes = ["no", "avg", "avg", "avg", "avg"],
-        attn_flags = [1, 1, 1, 1, 1],
+        pool_modes=["no", "avg", "avg", "avg", "avg"],
+        attn_flags=[1, 1, 1, 1, 1],
     ):
         super().__init__()
         assert len(pool_modes) == len(conv_configs)
 
-        TAda_configs = [False]
-        for _ in range(len(conv_configs)-1):
-            TAda_configs.append(args.TAda)
-
         ConvAttLIFs = []
-        for i, (conv_config, pool_mode, TAda, attn_flag) in enumerate(zip(conv_configs, pool_modes, TAda_configs, attn_flags)):
+        for i, (conv_config, pool_mode, attn_flag) in enumerate(
+            zip(conv_configs, pool_modes, attn_flags)
+        ):
             ConvAttLIFs.append(
                 nn.Sequential(
                     ConvAttLIF(
@@ -147,8 +132,7 @@ class DVSGestureNet(nn.Module):
                         stride=conv_config[3],
                         pool_mode=pool_mode,
                         T=args.T,
-                        track_running_stats = args.track_running_stats,
-                        TAda=TAda,
+                        track_running_stats=args.track_running_stats,
                     ),
                 )
             )
@@ -156,18 +140,17 @@ class DVSGestureNet(nn.Module):
         self.ConvAttLIFs = nn.ModuleList(ConvAttLIFs)
 
         FCs = []
-        cfg_fc = (channels * 4 ** 2, 512, args.num_classes * 10)
+        cfg_fc = (channels * 4**2, 512, args.num_classes * 10)
         if args.dataset == "action" or args.dataset == "recogition":
             if args.ds <= 2:
-                cfg_fc = (channels * 80 // (args.ds ** 2), 512, args.num_classes * 10)
+                cfg_fc = (channels * 80 // (args.ds**2), 512, args.num_classes * 10)
             elif args.ds == 4:
                 cfg_fc = (512, 512, args.num_classes * 10)
 
-        for i in range(len(cfg_fc)-1):
+        for i in range(len(cfg_fc) - 1):
             FCs.append(
                 nn.Sequential(
-                    layer.MultiStepDropout(0.0),
-                    AttLIF(cfg_fc[i], cfg_fc[i+1])
+                    layer.MultiStepDropout(0.0), AttLIF(cfg_fc[i], cfg_fc[i + 1])
                 )
             )
         self.FCs = nn.ModuleList(FCs)
