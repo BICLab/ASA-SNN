@@ -79,7 +79,7 @@ python3 train_test.py -h
 | HAR-DVS | SEW-Res-SNN-18 | 45.5 | 0.206 |
 | | . + ASA | 47.1(**+1.6**) | 0.183(**-11.2%**) |
 
-## Contact Information
+## Citation
 
 ```
 @inproceedings{yao2023inherent,
