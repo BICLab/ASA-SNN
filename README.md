@@ -81,6 +81,18 @@ python3 train_test.py -h
 
 ## Contact Information
 
+```
+@inproceedings{yao2023inherent,
+  title={Inherent Redundancy in Spiking Neural Networks},
+  author={Yao, Man and Hu, Jiakui and Zhao, Guangshe and Wang, Yaoyuan and Zhang, Ziyang and Xu, Bo and Li, Guoqi},
+  booktitle={Proceedings of the IEEE/CVF International Conference on Computer Vision},
+  pages={16924--16934},
+  year={2023}
+}
+```
+
+## Contact Information
+
 For help or issues using this git, please submit a GitHub issue.
 
 For other communications related to this git, please contact `manyao@stu.xjtu.edu.cn` and `jkhu29@stu.pku.edu.cn`.
