@@ -95,4 +95,4 @@ python3 train_test.py -h
 
 For help or issues using this git, please submit a GitHub issue.
 
-For other communications related to this git, please contact `manyao@stu.xjtu.edu.cn` and `jkhu29@stu.pku.edu.cn`.
+For other communications related to this git, please contact `manyao@ia.ac.cn` and `jkhu29@stu.pku.edu.cn`.
